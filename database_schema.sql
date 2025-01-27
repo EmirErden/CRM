@@ -1,6 +1,5 @@
 CREATE TYPE opportunity_status AS ENUM (
     'Qualification',
-    'Example Stage',
     'Proposal/Price Quote',
     'Negotiation/Review',
     'Closed Won',
@@ -54,10 +53,12 @@ CREATE TABLE Accounts -- Müşteriler ve şirketlerin bilgilerini içeren tablo
     account_type VARCHAR(20) NOT NULL, -- Müşteri Türü
     company_type VARCHAR(30),
     contact_name VARCHAR(30),
+    relation VARCHAR(50),
     name VARCHAR(100) NOT NULL, -- İsim veya Şirket Adı
     email VARCHAR(50) NOT NULL, -- E-mail
     phone VARCHAR(15) NOT NULL, -- Telefon Numarası
     address VARCHAR(255) NOT NULL, -- Adres
+    billing_address VARCHAR(255),
     city VARCHAR(50) NOT NULL, -- Şehir
     country VARCHAR(50) NOT NULL, -- Ülke
     date_of_birth DATE, -- Doğum tarihi (kişiler için geçerli)
@@ -71,10 +72,13 @@ CREATE TABLE Accounts -- Müşteriler ve şirketlerin bilgilerini içeren tablo
     facebook_url VARCHAR(50), -- Facebook URL (şirketler için geçerli)
     twitter_url VARCHAR(50),
     no_of_employees INT, -- Çalışan sayısı (şirketler için geçerli)
+    owner_id INT NOT NULL,
+    description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, --Potansiyel müşteri olduğu tarih
     created_by VARCHAR(50) NOT NULL,
     last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    modified_by VARCHAR(50) NOT NULL
+    modified_by VARCHAR(50) NOT NULL,
+    FOREIGN KEY (owner_id) REFERENCES CRMUsers(crm_user_id)
 );
 
 CREATE TABLE SupportTickets --Kullanıcıların destek biletlerinin tutulduğu yer
