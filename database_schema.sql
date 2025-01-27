@@ -36,6 +36,13 @@ CREATE TYPE ticket_status AS ENUM (
     'Closed'
     );
 
+CREATE TYPE ticket_priority AS ENUM (
+    'Low',
+    'Medium',
+    'High',
+    'Critical'
+    );
+
 CREATE TYPE employee_status AS ENUM (
     'Active',
     'Inactive'
@@ -46,6 +53,111 @@ CREATE TYPE user_roles AS ENUM (
     'Manager',
     'User'
     );
+
+
+CREATE TABLE Employees --Şirketemizde olan bütün çalışanları kapsar CRM kullananları ve kullanmayanları
+(
+    employee_id SERIAL PRIMARY KEY, -- Benzersiz çalışan ID'si
+    first_name VARCHAR(50) NOT NULL,            -- Ad
+    last_name VARCHAR(50) NOT NULL,             -- Soyad
+    department VARCHAR(50),                    -- Departman
+    job_title VARCHAR(50),                      -- Görev unvanı
+    email VARCHAR(100) UNIQUE,                 -- İş e-postası
+    status employee_status DEFAULT 'Active' -- Çalışan durumu
+);
+
+CREATE TABLE CRMUsers --Burası CRM kullanan çalışanların olduğu tablodur
+(
+    crm_user_id SERIAL PRIMARY KEY, -- Benzersiz CRM kullanıcı ID'si
+    employee_id INT UNIQUE,                    -- Çalışanla ilişki
+    username VARCHAR(50) UNIQUE NOT NULL,     -- CRM kullanıcı adı
+    password_hash VARCHAR(60) NOT NULL,       -- Şifre (hashlenmiş)
+    role user_roles NOT NULL, -- CRM uygulamasındaki rolü
+    FOREIGN KEY (employee_id) REFERENCES Employees(employee_id) -- Çalışan ilişkisi
+);
+
+ --!!!!!!!!!!!!!!!!!!!!!!!!!!!Şahıs şirketi ve normal şirket farkını eklememiz gerekebilir.
+CREATE TABLE Companies
+(
+    company_id SERIAL PRIMARY KEY,
+    company_name VARCHAR(100) NOT NULL,
+    phone VARCHAR(15),
+    website VARCHAR(50),
+    linkedin_url VARCHAR(50), -- Hesabın (varsa) linkedin hesabının linki
+    instagram_url VARCHAR(50), -- Hesabın (varsa) instagram hesabının linki
+    facebook_url VARCHAR(50), -- Hesabın (varsa) facebook hesabının linki
+    twitter_url VARCHAR(50), -- Hesabın (varsa) twitter hesabının linki
+    city VARCHAR(30),
+    company_type VARCHAR(50),
+    relation VARCHAR(50),
+    industry VARCHAR(50),
+    annual_revenue INT,
+    no_of_employees INT,
+    description TEXT, -- Hesap hakkında açıklama yapılması gerekiliyorsa doldurulur
+    address TEXT,
+    billing_address TEXT,
+    owner_id INT NOT NULL,
+    created_by INT NOT NULL, -- Hesabın yapan CRM Kullanıcısının
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Hesabın yaratıldığı tarih
+    modified_by INT NOT NULL, -- Hesapta en son değişiklik yapan CRM kullanıcısı
+    last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Hesap hakkında en son değişiklik yapıldığı tarih
+    FOREIGN KEY (owner_id) REFERENCES CRMUsers(crm_user_id),
+    FOREIGN KEY (created_by) REFERENCES CRMUsers(crm_user_id),
+    FOREIGN KEY (modified_by) REFERENCES CRMUsers(crm_user_id)
+);
+
+
+CREATE TABLE Contacts --Şirket müşterilerimiz ile bağlantımız olan insanların bilgilerinin bulunduğu tablo
+(
+    contact_id SERIAL PRIMARY KEY, --Bağlantıya özel Id
+    company_id INT NOT NULL, --Bağlantının şirketinin Id'si
+    name VARCHAR(100) NOT NULL, -- Bğlantının ismi
+    phone VARCHAR(15), --Bağlantının telefon numarası
+    email VARCHAR(50), --Bağlantının email adresi
+    position VARCHAR(50), --Bağlantının şirketteki pozisyonu
+    FOREIGN KEY (company_id) REFERENCES Companies(company_id)
+);
+
+CREATE TABLE Individuals
+(
+    individual_id SERIAL PRIMARY KEY,
+    individual_name VARCHAR(100) NOT NULL,
+    email VARCHAR(50),
+    phone VARCHAR(15),
+    relation VARCHAR(50),
+    website VARCHAR(50),
+    linkedin_url VARCHAR(50), -- Hesabın (varsa) linkedin hesabının linki
+    instagram_url VARCHAR(50), -- Hesabın (varsa) instagram hesabının linki
+    facebook_url VARCHAR(50), -- Hesabın (varsa) facebook hesabının linki
+    twitter_url VARCHAR(50), -- Hesabın (varsa) twitter hesabının linki
+    city VARCHAR(30),
+    date_of_birth DATE, -- Doğum tarihi (müşteriler için geçerli)
+    gender VARCHAR(20), -- Cinsiyet (kişiler için geçerli)
+    martial_status BOOLEAN DEFAULT FALSE, -- Medeni durum (kişiler için geçerli)
+    have_kids BOOLEAN DEFAULT FALSE, -- Çocuk sahibi olma durumu (kişiler için geçerli)
+    industry VARCHAR(50), -- Şirketin endüstrisi (şirketler için geçerli)
+    annual_revenue INT,
+    description TEXT, -- Hesap hakkında açıklama yapılması gerekiliyorsa doldurulur
+    owner_id INT NOT NULL, -- Bu hesabı hesap yapan CRM kullanıcısının ID'si
+    address TEXT,
+    billing_address TEXT,
+    created_by INT NOT NULL, -- Hesabın yapan CRM Kullanıcısının
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Hesabın yaratıldığı tarih
+    modified_by INT NOT NULL, -- Hesapta en son değişiklik yapan CRM kullanıcısı
+    last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Hesap hakkında en son değişiklik yapıldığı tarih
+    FOREIGN KEY (owner_id) REFERENCES CRMUsers(crm_user_id),
+    FOREIGN KEY (created_by) REFERENCES CRMUsers(crm_user_id),
+    FOREIGN KEY (modified_by) REFERENCES CRMUsers(crm_user_id)
+);
+
+CREATE TABLE Customers
+(
+    customer_id SERIAL PRIMARY KEY,
+    company_id INT,
+    individual_id INT,
+    FOREIGN KEY (company_id) REFERENCES Companies(company_id),
+    FOREIGN KEY (individual_id) REFERENCES Individuals(individual_id)
+);
 
 CREATE TABLE Accounts -- Müşteriler ve şirketlerin bilgilerini içeren tablo. Müşteri ve şirketleri hesap adı altında birleştiriyoruz.
 (
@@ -75,33 +187,20 @@ CREATE TABLE Accounts -- Müşteriler ve şirketlerin bilgilerini içeren tablo.
     no_of_employees INT, -- Çalışan sayısı (şirketler için geçerli)
     owner_id INT NOT NULL, -- Bu hesabı hesap yapan CRM kullanıcısının ID'si
     description TEXT, -- Hesap hakkında açıklama yapılması gerekiliyorsa doldurulur
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Hesabın yaratıldığı tarih
     created_by INT NOT NULL, -- Hesabın yapan CRM Kullanıcısının
-    last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Hesap hakkında en son değişiklik yapıldığı tarih
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Hesabın yaratıldığı tarih
     modified_by INT NOT NULL, -- Hesapta en son değişiklik yapan CRM kullanıcısı
+    last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Hesap hakkında en son değişiklik yapıldığı tarih
     FOREIGN KEY (owner_id) REFERENCES CRMUsers(crm_user_id),
     FOREIGN KEY (created_by) REFERENCES CRMUsers(crm_user_id),
     FOREIGN KEY (modified_by) REFERENCES CRMUsers(crm_user_id)
 );
 
-/*
-CREATE TABLE Contacts --Şirket müşterilerimiz ile bağlantımız olan insanların bilgilerinin bulunduğu tablo
-(
-    contact_id SERIAL PRIMARY KEY, --Bağlantıya özel Id
-    company_id INT NOT NULL, --Bağlantının şirketinin Id'si
-    name VARCHAR(100) NOT NULL, -- Bğlantının ismi
-    phone VARCHAR(15), --Bağlantının telefon numarası
-    email VARCHAR(50), --Bağlantının email adresi
-    position VARCHAR(50), --Bağlantının şirketteki pozisyonu
-    FOREIGN KEY (company_id) REFERENCES Accounts(account_id)
-);
-*/
-
 CREATE TABLE SupportTickets --Kullanıcıların destek biletlerinin tutulduğu yer
 (
     ticket_id SERIAL PRIMARY KEY, --Biletlere özel Id
     account_id INT, --Bileti yapan Hesabın Id'si. Burası foreign key olacak.
-    priority VARCHAR(20) NOT NULL, --Biletin öncelik düzeyi
+    priority ticket_priority DEFAULT 'Low', --Biletin öncelik düzeyi
     status ticket_status DEFAULT 'Open', --Biletin durumu
     issue_type VARCHAR(30), -- Biletin ne tipinin ne olduğunu anlatan değişken (Hata,
     case_origin VARCHAR(20) NOT NULL, --!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! Bu ne bilmiyorum yukarıdaki variable ile aynı olabilir.
@@ -109,34 +208,13 @@ CREATE TABLE SupportTickets --Kullanıcıların destek biletlerinin tutulduğu y
     issue_description TEXT NOT NULL, --Bilette anlatılan sorun
     solution_description TEXT, --Eğer çözüldüyse sorunun çözümü
     solution_date TIMESTAMP, --Eğer çözüldüyse çözülme zamanı
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Biletin yaratıldığı zaman
     created_by INT NOT NULL, --Bileti yaratan hesabın ID'si
-    last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP, --Bilet hakkında en son değişiklik yapılan tarih
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Biletin yaratıldığı zaman
     modified_by INT NOT NULL, --Bilet hakkında en son işlem yapan kullanıcının ID'si
+    last_modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP, --Bilet hakkında en son değişiklik yapılan tarih
     FOREIGN KEY (account_id) REFERENCES Accounts(account_id),
     FOREIGN KEY (created_by) REFERENCES CRMUsers(crm_user_id),
     FOREIGN KEY (modified_by) REFERENCES CRMUsers(crm_user_id)
-);
-
-CREATE TABLE Employees --Şirketemizde olan bütün çalışanları kapsar CRM kullananları ve kullanmayanları
-(
-    employee_id SERIAL PRIMARY KEY, -- Benzersiz çalışan ID'si
-    first_name VARCHAR(50) NOT NULL,            -- Ad
-    last_name VARCHAR(50) NOT NULL,             -- Soyad
-    department VARCHAR(50),                    -- Departman
-    job_title VARCHAR(50),                      -- Görev unvanı
-    email VARCHAR(100) UNIQUE,                 -- İş e-postası
-    status employee_status DEFAULT 'Active' -- Çalışan durumu
-);
-
-CREATE TABLE CRMUsers --Burası CRM kullanan çalışanların olduğu tablodur
-(
-    crm_user_id SERIAL PRIMARY KEY, -- Benzersiz CRM kullanıcı ID'si
-    employee_id INT UNIQUE,                    -- Çalışanla ilişki
-    username VARCHAR(50) UNIQUE NOT NULL,     -- CRM kullanıcı adı
-    password_hash VARCHAR(60) NOT NULL,       -- Şifre (hashlenmiş)
-    role user_roles NOT NULL, -- CRM uygulamasındaki rolü
-    FOREIGN KEY (employee_id) REFERENCES Employees(employee_id) -- Çalışan ilişkisi
 );
 
 CREATE TABLE Interactions --Müşteriler ile olan etkileşimlerin bulunduğu masa
